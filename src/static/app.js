@@ -3,15 +3,34 @@ document.addEventListener("DOMContentLoaded", () => {
   const activitySelect = document.getElementById("activity");
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
+  const categoryFilter = document.getElementById("category-filter");
+  const sortFilter = document.getElementById("sort-filter");
+  const searchQuery = document.getElementById("search-query");
+  const applyFiltersBtn = document.getElementById("apply-filters");
 
-  // Function to fetch activities from API
+  // Function to fetch activities from API with filters
   async function fetchActivities() {
     try {
-      const response = await fetch("/activities");
+      // Build query params
+      const params = [];
+      if (categoryFilter && categoryFilter.value) {
+        params.push(`category=${encodeURIComponent(categoryFilter.value)}`);
+      }
+      if (sortFilter && sortFilter.value) {
+        params.push(`sort=${encodeURIComponent(sortFilter.value)}`);
+      }
+      if (searchQuery && searchQuery.value) {
+        params.push(`search=${encodeURIComponent(searchQuery.value)}`);
+      }
+      const queryString = params.length ? `?${params.join("&")}` : "";
+      const response = await fetch(`/activities${queryString}`);
       const activities = await response.json();
 
-      // Clear loading message
+      // Clear loading message and dropdown
       activitiesList.innerHTML = "";
+      if (activitySelect) {
+        activitySelect.innerHTML = '<option value="">-- Select an activity --</option>';
+      }
 
       // Populate activities list
       Object.entries(activities).forEach(([name, details]) => {
@@ -40,6 +59,7 @@ document.addEventListener("DOMContentLoaded", () => {
         activityCard.innerHTML = `
           <h4>${name}</h4>
           <p>${details.description}</p>
+          <p><strong>Category:</strong> ${details.category || "Other"}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
           <div class="participants-container">
@@ -50,10 +70,12 @@ document.addEventListener("DOMContentLoaded", () => {
         activitiesList.appendChild(activityCard);
 
         // Add option to select dropdown
-        const option = document.createElement("option");
-        option.value = name;
-        option.textContent = name;
-        activitySelect.appendChild(option);
+        if (activitySelect) {
+          const option = document.createElement("option");
+          option.value = name;
+          option.textContent = name;
+          activitySelect.appendChild(option);
+        }
       });
 
       // Add event listeners to delete buttons
@@ -153,6 +175,21 @@ document.addEventListener("DOMContentLoaded", () => {
       messageDiv.classList.remove("hidden");
       console.error("Error signing up:", error);
     }
+  });
+
+  // Apply filters button event
+  if (applyFiltersBtn) {
+    applyFiltersBtn.addEventListener("click", () => {
+      fetchActivities();
+    });
+  }
+
+  // Optionally, auto-update on filter change
+  if (categoryFilter) categoryFilter.addEventListener("change", fetchActivities);
+  if (sortFilter) sortFilter.addEventListener("change", fetchActivities);
+  if (searchQuery) searchQuery.addEventListener("input", () => {
+    // Only fetch if search is cleared (for instant feedback)
+    if (!searchQuery.value) fetchActivities();
   });
 
   // Initialize app
